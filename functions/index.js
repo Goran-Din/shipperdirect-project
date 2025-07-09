@@ -1,13 +1,16 @@
-const functions = require("firebase-functions");
+const { onUserCreate } = require("firebase-functions/v2/auth");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-exports.onNewUserCreate = functions.auth.user().onCreate((user) => {
-  console.log(`v1: Creating organization profile for user: ${user.uid}`);
+exports.onNewUserCreate = onUserCreate(async (event) => {
+  const user = event.data;
+  const uid = user.uid;
+
+  console.log(`v2: Creating organization profile for new user: ${uid}`);
 
   const organizationProfile = {
-    ownerId: user.uid,
+    ownerId: uid,
     organizationName: "New Organization",
     powerUnits: 0,
     equipmentTypes: [],
@@ -18,5 +21,10 @@ exports.onNewUserCreate = functions.auth.user().onCreate((user) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  return admin.firestore().collection("organizations").doc(user.uid).set(organizationProfile);
+  try {
+    await admin.firestore().collection("organizations").doc(uid).set(organizationProfile);
+    console.log(`Successfully created organization profile for user: ${uid}`);
+  } catch (error) {
+    console.error(`Error creating organization profile for user: ${uid}`, error);
+  }
 });
